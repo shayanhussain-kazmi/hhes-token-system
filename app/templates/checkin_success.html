@@ -1,11 +1,34 @@
 <!doctype html>
-<html><head><title>Token Issued</title><link rel="stylesheet" href="/static/styles.css"></head>
-<body><div class="container">
-<h1>Token Issued ✅</h1>
-<p>Your token number:</p>
-<div class="token">{{token.token_number}}</div>
-<p>Department: <strong>{{department.name}}</strong></p>
-<p>Please keep a screenshot of this page.</p>
-<p class="small">You will receive SMS updates when your turn is called.</p>
-<a href="/checkin">Create another token</a>
-</div></body></html>
+<html>
+<head>
+  <title>Token Issued</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="container success-container">
+    <h1>Token Issued ✅</h1>
+    <p>Your token number:</p>
+    <div class="token prominent-token">{{token.token_number}}</div>
+    <p>Department: <strong>{{department.name}}</strong></p>
+    <p>Please keep a screenshot of this page.</p>
+    <p class="small">You will receive SMS updates when your turn is called.</p>
+
+    <p class="countdown-text">Redirecting to check-in in <strong><span id="countdown">10</span></strong> seconds.</p>
+    <a href="/checkin" class="button-link">Back to Check-in now</a>
+  </div>
+
+  <script>
+    let seconds = 10;
+    const countdownEl = document.getElementById('countdown');
+
+    const timer = setInterval(() => {
+      seconds -= 1;
+      countdownEl.textContent = String(seconds);
+      if (seconds <= 0) {
+        clearInterval(timer);
+        window.location.href = '/checkin';
+      }
+    }, 1000);
+  </script>
+</body>
+</html>

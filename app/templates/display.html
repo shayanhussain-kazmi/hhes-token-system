@@ -1,21 +1,78 @@
 <!doctype html>
-<html><head><title>Now Serving</title><link rel="stylesheet" href="/static/styles.css"></head>
-<body><div class="container">
-<h1>Now Serving</h1>
-<div id="now" class="grid"></div>
-<h2>Recently Served</h2>
-<table class="table"><thead><tr><th>Token</th><th>Department</th><th>Status</th></tr></thead><tbody id="recent"></tbody></table>
-<h2>Waiting Count</h2>
-<div id="waiting" class="grid"></div>
-</div>
-<script>
-async function refresh(){
- const res = await fetch('/api/display');
- const data = await res.json();
- document.getElementById('now').innerHTML = data.nowServing.map(x=>`<div class='card'><h3>${x.department}</h3><div class='token'>${x.token_number}</div></div>`).join('') || '<p>No active calls</p>';
- document.getElementById('recent').innerHTML = data.recentCompleted.map(x=>`<tr><td>${x.token_number}</td><td>${x.department}</td><td>${x.status}</td></tr>`).join('');
- document.getElementById('waiting').innerHTML = data.waitingCounts.map(x=>`<div class='card'><h3>${x.department}</h3><p>${x.count} waiting</p></div>`).join('');
-}
-refresh(); setInterval(refresh, 4000);
-</script>
-</body></html>
+<html>
+<head>
+  <title>Now Serving</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="display-body">
+  <div class="display-page">
+    <header class="display-header">Happy Home English School Sharjah</header>
+
+    <main class="display-main">
+      <section class="display-now-serving">
+        <h1 class="display-section-title">Now Serving</h1>
+        <div id="nowCards" class="now-cards"></div>
+      </section>
+
+      <aside class="display-video-panel">
+        <h2 class="display-section-title">Promotions</h2>
+        <div class="video-frame">
+          <video id="promoVideo" autoplay muted loop playsinline>
+            <source src="/static/media/promo.mp4" type="video/mp4">
+          </video>
+          <div id="videoPlaceholder" class="video-placeholder" hidden>Promo video not uploaded</div>
+        </div>
+      </aside>
+    </main>
+
+    <section class="display-recent">
+      <h2 class="display-section-title">Recently Served</h2>
+      <div id="recentCards" class="recent-cards"></div>
+    </section>
+
+    <footer class="display-footer">Thank you for visiting • Call: 06 566 1903 • Contact: principal@happyhomeenglishsch.com</footer>
+  </div>
+
+  <script>
+    function escapeHtml(text) {
+      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+      return String(text).replace(/[&<>"']/g, m => map[m]);
+    }
+
+    async function refresh() {
+      const res = await fetch('/api/display');
+      const data = await res.json();
+
+      const nowServing = data.nowServing.slice(0, 4);
+      document.getElementById('nowCards').innerHTML = nowServing.length
+        ? nowServing.map(item => `
+          <article class="now-card">
+            <div class="now-token">${escapeHtml(item.token_number)}</div>
+            <div class="now-department">${escapeHtml(item.department)}</div>
+          </article>
+        `).join('')
+        : '<p class="subtle">No active calls</p>';
+
+      const recent = data.recentCompleted.slice(0, 6);
+      document.getElementById('recentCards').innerHTML = recent.length
+        ? recent.map(item => `
+          <article class="recent-chip">
+            <div class="recent-token">${escapeHtml(item.token_number)}</div>
+            <div class="recent-department">${escapeHtml(item.department)}</div>
+          </article>
+        `).join('')
+        : '<p class="subtle">No recently served tokens</p>';
+    }
+
+    const promoVideo = document.getElementById('promoVideo');
+    const videoPlaceholder = document.getElementById('videoPlaceholder');
+    promoVideo.addEventListener('error', () => {
+      promoVideo.hidden = true;
+      videoPlaceholder.hidden = false;
+    });
+
+    refresh();
+    setInterval(refresh, 4000);
+  </script>
+</body>
+</html>
