@@ -1,0 +1,19 @@
+<!doctype html>
+<html><head><title>Check-In</title><link rel="stylesheet" href="/static/styles.css"></head>
+<body><div class="container">
+<h1>HHES Reception Check-In</h1>
+<form method="post" action="/checkin">
+<label>Name</label><input name="name" required>
+<label>Phone (+971...)</label><input name="phone" required pattern="^\+[1-9]\d{7,14}$">
+<label>Email</label><input name="email" type="email">
+<label>Department</label>
+<select name="department_id" required>
+{% for d in departments %}<option value="{{d.id}}">{{d.name}}</option>{% endfor %}
+</select>
+<label>Reason</label><textarea name="reason"></textarea>
+<label>Language</label>
+<select name="language"><option>EN</option><option>AR</option><option>UR</option></select>
+<button type="submit">Get Token</button>
+</form>
+<p class="small"><a href="/display">Public Display</a> | <a href="/login">Staff/Admin Login</a></p>
+</div></body></html>

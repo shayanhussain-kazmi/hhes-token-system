@@ -1,0 +1,38 @@
+<!doctype html>
+<html><head><title>Staff Panel</title><link rel="stylesheet" href="/static/styles.css"></head>
+<body><div class="container">
+<nav><a href="/display">Display</a><a href="/admin">Admin</a><a href="/logout">Logout</a></nav>
+<h1>Staff Queue Console</h1>
+{% if user.role.value == 'admin' %}
+<form method="get" action="/staff">
+<label>Department</label>
+<select name="department_id">{% for d in departments %}<option value="{{d.id}}" {% if department_filter == d.id %}selected{% endif %}>{{d.name}}</option>{% endfor %}</select>
+<button type="submit">Switch</button>
+</form>
+{% endif %}
+{% if department_filter %}
+<button onclick="callNext()">Call Next</button>
+{% endif %}
+<h2>Current Token</h2>
+{% if current %}
+<div class="card"><div class="token">{{current.token_number}}</div>
+<button onclick="tokenAction({{current.id}}, 'complete')">Mark Completed</button>
+<button onclick="tokenAction({{current.id}}, 'no-show')">No Show</button></div>
+{% else %}<p>No token currently called.</p>{% endif %}
+<h2>Waiting Queue</h2>
+<table class="table"><tr><th>Token</th><th>Created</th></tr>
+{% for t in waiting %}<tr><td>{{t.token_number}}</td><td>{{t.created_at}}</td></tr>{% endfor %}
+</table>
+</div>
+<script>
+async function callNext(){
+ const dep = {{department_filter or 0}};
+ const r = await fetch(`/api/departments/${dep}/call-next`, {method:'POST'});
+ if(r.ok){location.reload();} else {alert('No waiting token');}
+}
+async function tokenAction(id, action){
+ const r = await fetch(`/api/tokens/${id}/${action}`, {method:'POST'});
+ if(r.ok){location.reload();}
+}
+</script>
+</body></html>

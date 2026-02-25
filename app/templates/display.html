@@ -1,0 +1,21 @@
+<!doctype html>
+<html><head><title>Now Serving</title><link rel="stylesheet" href="/static/styles.css"></head>
+<body><div class="container">
+<h1>Now Serving</h1>
+<div id="now" class="grid"></div>
+<h2>Recently Served</h2>
+<table class="table"><thead><tr><th>Token</th><th>Department</th><th>Status</th></tr></thead><tbody id="recent"></tbody></table>
+<h2>Waiting Count</h2>
+<div id="waiting" class="grid"></div>
+</div>
+<script>
+async function refresh(){
+ const res = await fetch('/api/display');
+ const data = await res.json();
+ document.getElementById('now').innerHTML = data.nowServing.map(x=>`<div class='card'><h3>${x.department}</h3><div class='token'>${x.token_number}</div></div>`).join('') || '<p>No active calls</p>';
+ document.getElementById('recent').innerHTML = data.recentCompleted.map(x=>`<tr><td>${x.token_number}</td><td>${x.department}</td><td>${x.status}</td></tr>`).join('');
+ document.getElementById('waiting').innerHTML = data.waitingCounts.map(x=>`<div class='card'><h3>${x.department}</h3><p>${x.count} waiting</p></div>`).join('');
+}
+refresh(); setInterval(refresh, 4000);
+</script>
+</body></html>
