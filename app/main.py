@@ -175,7 +175,7 @@ def next_token_number(db: Session, department: Department) -> str:
     if not counter:
         counter = DepartmentCounter(department_id=department.id, current_number=0, last_reset_date=today)
         db.add(counter)
-    if TOKEN_RESET_DAILY and counter.last_reset_date != today:
+    if TOKEN_RESET_DAILY and (not counter.last_reset_date or counter.last_reset_date != today):
         counter.current_number = 0
         counter.last_reset_date = today
     counter.current_number += 1
@@ -280,7 +280,7 @@ def display_api(db: Session = Depends(get_db)):
     for dep in departments:
         current = db.scalar(select(Token).where(Token.department_id == dep.id, Token.status == TokenStatus.CALLED).order_by(Token.called_at.desc()))
         if current:
-            now_serving.append({"department": dep.name, "token_number": current.token_number})
+            now_serving.append({"id": current.id, "department": dep.name, "token_number": current.token_number})
     recent = db.scalars(select(Token).where(Token.status.in_([TokenStatus.COMPLETED, TokenStatus.NO_SHOW])).order_by(Token.completed_at.desc(), Token.called_at.desc()).limit(10)).all()
     waiting_counts = [
         {"department": dep.name, "count": db.scalar(select(func.count(Token.id)).where(Token.department_id == dep.id, Token.status == TokenStatus.WAITING))}
