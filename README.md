@@ -27,3 +27,8 @@ Default admin credentials:
 - Display API + page with auto-refresh polling.
 - Admin department management and summary/department/csv reports.
 - Audit logs for queue actions.
+
+## SMS note
+
+SMS notifications are currently **logging only** via `sms_logs` (no real provider is called yet).
+To enable real sending later, integrate an SMS provider such as Twilio or a UAE SMS gateway inside `send_sms` in `app/main.py` and store provider credentials in environment variables.
