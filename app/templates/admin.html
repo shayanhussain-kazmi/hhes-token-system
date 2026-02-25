@@ -1,0 +1,17 @@
+<!doctype html>
+<html><head><title>Admin Panel</title><link rel="stylesheet" href="/static/styles.css"></head>
+<body><div class="container">
+<nav><a href="/staff">Staff</a><a href="/display">Display</a><a href="/logout">Logout</a></nav>
+<h1>Admin Panel</h1>
+<h2>Departments</h2>
+<table class="table"><tr><th>Name</th><th>Code</th><th>Active</th></tr>{% for d in departments %}<tr><td>{{d.name}}</td><td>{{d.code}}</td><td>{{d.is_active}}</td></tr>{% endfor %}</table>
+<form method="post" action="/admin/departments">
+<label>Name</label><input name="name" required>
+<label>Code</label><input name="code" required>
+<button type="submit">Add Department</button>
+</form>
+<h2>Users</h2>
+<table class="table"><tr><th>Username</th><th>Role</th><th>Department</th></tr>{% for u in users %}<tr><td>{{u.username}}</td><td>{{u.role.value}}</td><td>{{u.department_id}}</td></tr>{% endfor %}</table>
+<h2>Reports Quick Links</h2>
+<p class="small">Use APIs: /api/reports/summary?from=YYYY-MM-DD&to=YYYY-MM-DD and /api/export/tokens.csv</p>
+</div></body></html>
