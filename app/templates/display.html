@@ -30,13 +30,68 @@
       <div id="recentCards" class="recent-cards"></div>
     </section>
 
-    <footer class="display-footer">Thank you for visiting • Call: 06 566 1903 • Contact: principal@happyhomeenglishsch.com</footer>
+    <footer class="display-footer">Thank you for visiting | Call: 06 566 1903 | Contact: principal@happyhomeenglishsch.com</footer>
   </div>
+
+  <div id="audioBanner" class="audio-banner" hidden>Audio may require user interaction once to enable announcements.</div>
 
   <script>
     function escapeHtml(text) {
       const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
       return String(text).replace(/[&<>"']/g, m => map[m]);
+    }
+
+    const announcedIds = new Set(JSON.parse(localStorage.getItem('display_announced_ids') || '[]'));
+
+    function saveAnnouncedIds() {
+      const compact = Array.from(announcedIds).slice(-20);
+      localStorage.setItem('display_announced_ids', JSON.stringify(compact));
+    }
+
+    function speakableToken(token) {
+      const [letters = '', numbers = ''] = String(token).split('-');
+      const letterPart = letters.toUpperCase().split('').join(' ');
+      const numberPart = numbers.split('').map(ch => (ch >= '0' && ch <= '9' ? ['zero','one','two','three','four','five','six','seven','eight','nine'][Number(ch)] : ch)).join(' ');
+      return `${letterPart} ${numberPart}`.trim();
+    }
+
+    function showAudioBanner(show) {
+      document.getElementById('audioBanner').hidden = !show;
+    }
+
+    async function playChime() {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) throw new Error('Audio context not available');
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.26);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.26);
+      await new Promise(resolve => setTimeout(resolve, 300));
+      await ctx.close();
+    }
+
+    async function announceToken(item) {
+      const message = `Token number ${speakableToken(item.token_number)}, please proceed to ${item.department}.`;
+      try {
+        await playChime();
+        const utterance = new SpeechSynthesisUtterance(message);
+        utterance.rate = 0.93;
+        utterance.pitch = 1;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utterance);
+        showAudioBanner(false);
+      } catch (error) {
+        showAudioBanner(true);
+      }
     }
 
     async function refresh() {
@@ -52,6 +107,15 @@
           </article>
         `).join('')
         : '<p class="subtle">No active calls</p>';
+
+      const newCalls = nowServing.filter(item => item.id && !announcedIds.has(item.id));
+      for (const called of newCalls) {
+        announcedIds.add(called.id);
+        await announceToken(called);
+      }
+      if (newCalls.length) {
+        saveAnnouncedIds();
+      }
 
       const recent = data.recentCompleted.slice(0, 6);
       document.getElementById('recentCards').innerHTML = recent.length
@@ -70,6 +134,8 @@
       promoVideo.hidden = true;
       videoPlaceholder.hidden = false;
     });
+
+    document.addEventListener('click', () => showAudioBanner(false));
 
     refresh();
     setInterval(refresh, 4000);
