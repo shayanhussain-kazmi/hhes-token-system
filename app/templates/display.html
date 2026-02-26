@@ -59,6 +59,29 @@
       document.getElementById('audioBanner').hidden = !show;
     }
 
+    function pickAnnouncementVoice() {
+      const voices = window.speechSynthesis?.getVoices?.() || [];
+      const englishVoices = voices.filter(voice => String(voice.lang || '').toLowerCase().startsWith('en'));
+      if (!englishVoices.length) return null;
+
+      const preferredVoiceHints = [
+        'zira',
+        'samantha',
+        'female',
+        'google uk english female',
+        'karen',
+        'tessa',
+        'serena'
+      ];
+
+      const preferred = englishVoices.find(voice => {
+        const name = String(voice.name || '').toLowerCase();
+        return preferredVoiceHints.some(hint => name.includes(hint));
+      });
+
+      return preferred || englishVoices[0] || null;
+    }
+
     async function playChime() {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtx) throw new Error('Audio context not available');
@@ -84,8 +107,13 @@
       try {
         await playChime();
         const utterance = new SpeechSynthesisUtterance(message);
-        utterance.rate = 0.93;
-        utterance.pitch = 1;
+        const selectedVoice = pickAnnouncementVoice();
+        if (selectedVoice) {
+          utterance.voice = selectedVoice;
+        }
+        utterance.rate = 0.80;
+        utterance.pitch = 1.05;
+        utterance.volume = 1.0;
         window.speechSynthesis.cancel();
         window.speechSynthesis.speak(utterance);
         showAudioBanner(false);

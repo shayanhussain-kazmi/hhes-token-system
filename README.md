@@ -26,7 +26,7 @@ Default admin credentials:
 - Staff queue actions: call-next, complete, no-show.
 - Display API + page with auto-refresh polling.
 - Department token counters reset automatically each day when the first token is created for that department (no cron job required).
-- Display screen announces newly called tokens with a short chime + browser speech synthesis; some TVs may need one user interaction to enable audio autoplay.
+- Display screen announces newly called tokens with a short chime + browser speech synthesis; voice selection depends on English voices installed on the device/browser, and some TVs may need one user interaction to enable audio autoplay.
 - Admin department management and summary/department/csv reports.
 - Audit logs for queue actions.
 
