@@ -392,6 +392,14 @@ def admin_page(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(request, "admin.html", {"departments": departments, "users": users})
 
 
+@app.get("/admin/reports", response_class=HTMLResponse)
+def reports_page(request: Request, db: Session = Depends(get_db)):
+    require_user(request, db, [Role.ADMIN])
+    departments = db.scalars(select(Department).where(Department.is_active.is_(True)).order_by(Department.display_order)).all()
+    department_data = [{"id": dep.id, "name": dep.name} for dep in departments]
+    return templates.TemplateResponse(request, "reports.html", {"departments": department_data})
+
+
 @app.post("/admin/departments")
 def create_department(request: Request, name: str = Form(...), code: str = Form(...), db: Session = Depends(get_db)):
     require_user(request, db, [Role.ADMIN])
