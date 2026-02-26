@@ -1,0 +1,241 @@
+<!doctype html>
+<html>
+<head>
+  <title>Reports & Evaluation</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="container reports-page">
+    <nav>
+      <a href="/admin">Admin</a>
+      <a href="/staff">Staff</a>
+      <a href="/display">Display</a>
+      <a href="/logout">Logout</a>
+    </nav>
+
+    <div class="reports-header">
+      <h1>Reports &amp; Evaluation</h1>
+      <a id="exportCsvBtn" class="button-link reports-export" href="#">Export CSV</a>
+    </div>
+
+    <section class="reports-filters card">
+      <div class="reports-filter-grid">
+        <div>
+          <label for="fromDate">From</label>
+          <input id="fromDate" type="date">
+        </div>
+        <div>
+          <label for="toDate">To</label>
+          <input id="toDate" type="date">
+        </div>
+      </div>
+      <div class="quick-range-buttons">
+        <button id="todayBtn" type="button">Today</button>
+        <button id="last7Btn" type="button">Last 7 Days</button>
+        <button id="monthBtn" type="button">This Month</button>
+      </div>
+    </section>
+
+    <section class="reports-kpis">
+      <article class="report-kpi-card">
+        <h2>Total Visitors</h2>
+        <p id="visitorsKpi" class="kpi-value">—</p>
+      </article>
+      <article class="report-kpi-card">
+        <h2>Avg Wait Time</h2>
+        <p id="waitKpi" class="kpi-value">—</p>
+      </article>
+      <article class="report-kpi-card">
+        <h2>Avg Service Time</h2>
+        <p id="serviceKpi" class="kpi-value">—</p>
+      </article>
+    </section>
+
+    <section class="card reports-table-card">
+      <h2>Department Breakdown</h2>
+      <div class="reports-table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Department</th>
+              <th>Visitors</th>
+              <th>Avg Wait</th>
+              <th>Avg Service</th>
+              <th>Completed</th>
+              <th>No Show</th>
+            </tr>
+          </thead>
+          <tbody id="departmentTableBody">
+            <tr><td colspan="6" class="small">Loading report data…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p id="emptyState" class="small reports-empty hidden">No records found for the selected date range.</p>
+    </section>
+  </div>
+
+  <script>
+    const departments = {{ departments | tojson }};
+    const fromInput = document.getElementById('fromDate');
+    const toInput = document.getElementById('toDate');
+    const visitorsKpi = document.getElementById('visitorsKpi');
+    const waitKpi = document.getElementById('waitKpi');
+    const serviceKpi = document.getElementById('serviceKpi');
+    const tableBody = document.getElementById('departmentTableBody');
+    const emptyState = document.getElementById('emptyState');
+    const exportBtn = document.getElementById('exportCsvBtn');
+
+    const pad = (n) => String(n).padStart(2, '0');
+    const isoDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    function formatSeconds(seconds) {
+      const total = Math.max(0, Math.round(Number(seconds) || 0));
+      const mins = Math.floor(total / 60);
+      const secs = total % 60;
+      return `${mins}m ${secs}s`;
+    }
+
+    function setRange(fromDate, toDate) {
+      fromInput.value = isoDate(fromDate);
+      toInput.value = isoDate(toDate);
+      refreshData();
+    }
+
+    function updateExportLink() {
+      const from = fromInput.value;
+      const to = toInput.value;
+      exportBtn.href = `/api/export/tokens.csv?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+    }
+
+    async function fetchSummary(from, to) {
+      const response = await fetch(`/api/reports/summary?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+      if (!response.ok) {
+        throw new Error('Could not load summary report');
+      }
+      return response.json();
+    }
+
+    async function fetchDepartmentRows(from, to) {
+      const calls = departments.map(async (department) => {
+        const response = await fetch(`/api/reports/department?dept_id=${department.id}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+        if (!response.ok) {
+          throw new Error(`Could not load department report for ${department.name}`);
+        }
+        const data = await response.json();
+        return {
+          department: department.name,
+          visitors: data.visitors,
+          avgWaitSeconds: data.avg_wait_seconds,
+          avgServiceSeconds: data.avg_service_seconds,
+        };
+      });
+
+      return Promise.all(calls);
+    }
+
+    async function fetchStatusCounts(from, to) {
+      const response = await fetch(`/api/export/tokens.csv?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+      if (!response.ok) {
+        throw new Error('Could not load status details');
+      }
+      const csv = await response.text();
+      const lines = csv.trim().split('\n').slice(1);
+      const map = {};
+      departments.forEach(dep => {
+        map[dep.name] = { completed: 0, noShow: 0 };
+      });
+      lines.forEach((line) => {
+        if (!line.trim()) return;
+        const cols = line.split(',');
+        const depName = cols[1];
+        const status = cols[2];
+        if (!map[depName]) {
+          map[depName] = { completed: 0, noShow: 0 };
+        }
+        if (status === 'completed') map[depName].completed += 1;
+        if (status === 'no_show') map[depName].noShow += 1;
+      });
+      return map;
+    }
+
+    function renderDepartmentRows(rows, statusMap) {
+      const hasData = rows.some((row) => row.visitors > 0);
+      emptyState.classList.toggle('hidden', hasData);
+
+      if (!departments.length) {
+        tableBody.innerHTML = '<tr><td colspan="6" class="small">No departments available.</td></tr>';
+        return;
+      }
+
+      tableBody.innerHTML = rows.map((row) => {
+        const status = statusMap[row.department] || { completed: 0, noShow: 0 };
+        return `
+          <tr>
+            <td>${row.department}</td>
+            <td>${row.visitors}</td>
+            <td>${formatSeconds(row.avgWaitSeconds)}</td>
+            <td>${formatSeconds(row.avgServiceSeconds)}</td>
+            <td>${status.completed}</td>
+            <td>${status.noShow}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function refreshData() {
+      const from = fromInput.value;
+      const to = toInput.value;
+      if (!from || !to) return;
+      updateExportLink();
+
+      tableBody.innerHTML = '<tr><td colspan="6" class="small">Loading report data…</td></tr>';
+
+      try {
+        const [summary, departmentRows, statusMap] = await Promise.all([
+          fetchSummary(from, to),
+          fetchDepartmentRows(from, to),
+          fetchStatusCounts(from, to),
+        ]);
+
+        visitorsKpi.textContent = summary.visitors;
+        waitKpi.textContent = formatSeconds(summary.avg_wait_seconds);
+        serviceKpi.textContent = formatSeconds(summary.avg_service_seconds);
+
+        renderDepartmentRows(departmentRows, statusMap);
+      } catch (error) {
+        visitorsKpi.textContent = '—';
+        waitKpi.textContent = '—';
+        serviceKpi.textContent = '—';
+        emptyState.classList.remove('hidden');
+        emptyState.textContent = 'Unable to load report data right now.';
+        tableBody.innerHTML = '<tr><td colspan="6" class="small">Unable to fetch data.</td></tr>';
+      }
+    }
+
+    document.getElementById('todayBtn').addEventListener('click', () => {
+      const now = new Date();
+      setRange(now, now);
+    });
+
+    document.getElementById('last7Btn').addEventListener('click', () => {
+      const to = new Date();
+      const from = new Date();
+      from.setDate(from.getDate() - 6);
+      setRange(from, to);
+    });
+
+    document.getElementById('monthBtn').addEventListener('click', () => {
+      const to = new Date();
+      const from = new Date(to.getFullYear(), to.getMonth(), 1);
+      setRange(from, to);
+    });
+
+    fromInput.addEventListener('change', refreshData);
+    toInput.addEventListener('change', refreshData);
+
+    const today = new Date();
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    setRange(monthStart, today);
+  </script>
+</body>
+</html>
